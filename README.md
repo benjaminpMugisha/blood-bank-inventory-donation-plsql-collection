@@ -1,3 +1,6 @@
+# Name: MUGISHA Prince Benjamin
+# ID: 26979
+
 # Blood Bank & Donation/ Inventory System - PL/SQL Collections & Records 
 
 Problem Statement
