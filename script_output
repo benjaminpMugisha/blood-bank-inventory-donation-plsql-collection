@@ -1,0 +1,122 @@
+=== ASSOCIATIVE ARRAYS DEMONSTRATION ===
+Donor Management by Phone Number
+=========================================
+Donor Found: Maria Garcia - Blood Type: A-
+
+All donors in phone directory:
+Phone: 079-555-0101 - John Smith
+Phone: 079-555-0104 - Lisa Chen
+Phone: 079-555-0105 - Robert Brown
+Phone: 555-0101 - John Smith
+Phone: 555-0102 - Maria Garcia
+Phone: 555-0103 - David Johnson
+Phone: 555-0104 - Lisa Chen
+Phone: 555-0105 - Robert Brown
+Phone: `078-555-0102 - Maria Garcia
+Phone: `079-555-0103 - David Johnson
+
+
+PL/SQL procedure successfully completed.
+
+
+=== VARRAYS DEMONSTRATION ===
+Recent Blood Units Collection (Fixed Size)
+=========================================
+Recent units collected: 9
+Unit 1: O- - Collected: 15-NOV-2025 - Expires: 27-DEC-2025
+Unit 2: O- - Collected: 15-NOV-2025 - Expires: 27-DEC-2025
+Unit 3: O- - Collected: 15-NOV-2025 - Expires: 27-DEC-2025
+Unit 4: B+ - Collected: 12-NOV-2025 - Expires: 24-DEC-2025
+Unit 5: B+ - Collected: 12-NOV-2025 - Expires: 24-DEC-2025
+Unit 6: B+ - Collected: 12-NOV-2025 - Expires: 24-DEC-2025
+Unit 7: A- - Collected: 10-NOV-2025 - Expires: 22-DEC-2025
+Unit 8: A- - Collected: 10-NOV-2025 - Expires: 22-DEC-2025
+Unit 9: A- - Collected: 10-NOV-2025 - Expires: 22-DEC-2025
+Total blood volume in recent collection: 4050 ml
+
+
+=== NESTED TABLES DEMONSTRATION ===
+Blood Type Distribution Analysis
+================================
+Blood Type A-: 3 units available
+Blood Type B+: 3 units available
+Blood Type O-: 3 units available
+Total rare blood types (O-, AB-) available: 3 units
+After deletion, nested table count: 2
+
+
+PL/SQL procedure successfully completed.
+
+
+=== TABLE-BASED RECORDS DEMONSTRATION ===
+Donor and Blood Unit Information
+=================================
+Donor: Maria Garcia
+Blood Type: A-
+Status: Active
+Blood Unit: 1 - Expires: 22-DEC-2025
+
+
+PL/SQL procedure successfully completed.
+
+=== USER-DEFINED RECORDS DEMONSTRATION ===
+Donor Medical Profiles and Inventory Summary
+============================================
+DONOR MEDICAL PROFILE:
+Name: Maria Garcia
+Age: 34 years
+Blood Type: A-
+Last Donation Status: Recent donor - ineligible
+Eligibility: Wait Period
+Next Eligible Date: 13-JAN-2026
+
+INVENTORY SUMMARY for O-:
+Total Units: 3
+Available Units: 3
+Expiring Soon: 0
+Utilization Rate: 100%
+
+
+PL/SQL procedure successfully completed.
+
+
+=== CURSOR-BASED RECORDS DEMONSTRATION ===
+Critical Blood Request Analysis
+================================
+Critical requests found: 3
+Request 1: Central Medical
+  Blood Type: A-
+  Required: 2 units
+  Available: 3 units
+  Shortage: 0 units
+Request 2: Central Medical
+  Blood Type: A-
+  Required: 2 units
+  Available: 3 units
+  Shortage: 0 units
+Request 3: Central Medical
+  Blood Type: A-
+  Required: 2 units
+  Available: 3 units
+  Shortage: 0 units
+
+
+PL/SQL procedure successfully completed.
+
+=== COMPREHENSIVE PL/SQL FEATURES DEMONSTRATION ===
+Blood Donation System - Integrated Emergency Management
+Collections + Records + GOTO Statements
+=====================================================
+
+PHASE 1: DATA GATHERING WITH COLLECTIONS
+Active donors in system: 15
+
+PHASE 2: BLOOD TYPE ANALYSIS WITH RECORDS
+Error in integrated system: ORA-00937: not a single-group group function
+
+
+PL/SQL procedure successfully completed.
+
+
+
+PL/SQL procedure successfully completed.
