@@ -1,0 +1,220 @@
+-- ============================================================================
+-- Script: 03_CREATE_USERS.sql
+-- Purpose: Create admin user and grant comprehensive privileges
+-- Author: Benjamin (Student ID: 26979)
+-- Group: Thursday (thur)
+-- Database: thur_26979_benjamin_blooddonation_db
+-- ============================================================================
+
+CONNECT sys/oracle@localhost:1521/thur_26979_benjamin_blooddonation_db AS SYSDBA
+
+SET ECHO ON
+SET SERVEROUTPUT ON
+
+SPOOL create_users.log
+
+PROMPT ============================================================
+PROMPT Creating Users for thur_26979_benjamin_blooddonation_db
+PROMPT ============================================================
+
+-- ============================================================================
+-- CREATE BENJAMIN_ADMIN USER
+-- ============================================================================
+
+-- Drop if exists
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM DBA_USERS WHERE USERNAME = 'BENJAMIN_ADMIN';
+    IF v_count > 0 THEN
+        EXECUTE IMMEDIATE 'DROP USER BENJAMIN_ADMIN CASCADE';
+        DBMS_OUTPUT.PUT_LINE('✓ Existing BENJAMIN_ADMIN dropped');
+    END IF;
+END;
+/
+
+PROMPT Creating BENJAMIN_ADMIN user...
+
+CREATE USER BENJAMIN_ADMIN
+IDENTIFIED BY Benjamin
+DEFAULT TABLESPACE BLOOD_BANK_DATA
+TEMPORARY TABLESPACE BLOOD_BANK_TEMP
+QUOTA UNLIMITED ON BLOOD_BANK_DATA
+QUOTA UNLIMITED ON BLOOD_BANK_INDEXES
+QUOTA UNLIMITED ON BLOOD_BANK_LOB
+QUOTA UNLIMITED ON BLOOD_BANK_ARCHIVE
+QUOTA UNLIMITED ON BLOOD_BANK_BI
+ACCOUNT UNLOCK;
+
+PROMPT ✓ BENJAMIN_ADMIN created
+
+-- ============================================================================
+-- GRANT SUPER ADMIN PRIVILEGES
+-- ============================================================================
+
+PROMPT Granting super admin privileges...
+
+-- Core DBA privileges
+GRANT DBA TO BENJAMIN_ADMIN;
+GRANT SYSDBA TO BENJAMIN_ADMIN;
+GRANT SYSOPER TO BENJAMIN_ADMIN;
+
+-- Session privileges
+GRANT CREATE SESSION TO BENJAMIN_ADMIN;
+GRANT ALTER SESSION TO BENJAMIN_ADMIN;
+GRANT UNLIMITED TABLESPACE TO BENJAMIN_ADMIN;
+
+-- Object creation privileges
+GRANT CREATE TABLE TO BENJAMIN_ADMIN;
+GRANT CREATE VIEW TO BENJAMIN_ADMIN;
+GRANT CREATE SEQUENCE TO BENJAMIN_ADMIN;
+GRANT CREATE PROCEDURE TO BENJAMIN_ADMIN;
+GRANT CREATE TRIGGER TO BENJAMIN_ADMIN;
+GRANT CREATE TYPE TO BENJAMIN_ADMIN;
+GRANT CREATE SYNONYM TO BENJAMIN_ADMIN;
+GRANT CREATE MATERIALIZED VIEW TO BENJAMIN_ADMIN;
+GRANT CREATE JOB TO BENJAMIN_ADMIN;
+
+-- Advanced privileges
+GRANT CREATE ANY TABLE TO BENJAMIN_ADMIN;
+GRANT ALTER ANY TABLE TO BENJAMIN_ADMIN;
+GRANT DROP ANY TABLE TO BENJAMIN_ADMIN;
+GRANT SELECT ANY TABLE TO BENJAMIN_ADMIN;
+GRANT INSERT ANY TABLE TO BENJAMIN_ADMIN;
+GRANT UPDATE ANY TABLE TO BENJAMIN_ADMIN;
+GRANT DELETE ANY TABLE TO BENJAMIN_ADMIN;
+
+-- Procedure privileges
+GRANT CREATE ANY PROCEDURE TO BENJAMIN_ADMIN;
+GRANT ALTER ANY PROCEDURE TO BENJAMIN_ADMIN;
+GRANT DROP ANY PROCEDURE TO BENJAMIN_ADMIN;
+GRANT EXECUTE ANY PROCEDURE TO BENJAMIN_ADMIN;
+
+-- Trigger privileges
+GRANT CREATE ANY TRIGGER TO BENJAMIN_ADMIN;
+GRANT ALTER ANY TRIGGER TO BENJAMIN_ADMIN;
+GRANT DROP ANY TRIGGER TO BENJAMIN_ADMIN;
+GRANT ADMINISTER DATABASE TRIGGER TO BENJAMIN_ADMIN;
+
+-- View privileges
+GRANT CREATE ANY VIEW TO BENJAMIN_ADMIN;
+GRANT DROP ANY VIEW TO BENJAMIN_ADMIN;
+
+-- Sequence privileges
+GRANT CREATE ANY SEQUENCE TO BENJAMIN_ADMIN;
+GRANT ALTER ANY SEQUENCE TO BENJAMIN_ADMIN;
+GRANT DROP ANY SEQUENCE TO BENJAMIN_ADMIN;
+GRANT SELECT ANY SEQUENCE TO BENJAMIN_ADMIN;
+
+-- User management
+GRANT CREATE USER TO BENJAMIN_ADMIN;
+GRANT ALTER USER TO BENJAMIN_ADMIN;
+GRANT DROP USER TO BENJAMIN_ADMIN;
+
+-- Role management
+GRANT CREATE ROLE TO BENJAMIN_ADMIN;
+GRANT ALTER ANY ROLE TO BENJAMIN_ADMIN;
+GRANT DROP ANY ROLE TO BENJAMIN_ADMIN;
+GRANT GRANT ANY ROLE TO BENJAMIN_ADMIN;
+
+-- Analysis privileges
+GRANT ANALYZE ANY TO BENJAMIN_ADMIN;
+GRANT ANALYZE ANY DICTIONARY TO BENJAMIN_ADMIN;
+
+-- DBMS packages
+GRANT EXECUTE ON DBMS_STATS TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_SQL TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_OUTPUT TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_LOCK TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_JOB TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_SCHEDULER TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_METADATA TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_RANDOM TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_CRYPTO TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON DBMS_LOB TO BENJAMIN_ADMIN;
+GRANT EXECUTE ON UTL_FILE TO BENJAMIN_ADMIN;
+
+PROMPT ✓ Super admin privileges granted
+
+-- ============================================================================
+-- VERIFY USER CREATION
+-- ============================================================================
+
+PROMPT
+PROMPT ============================================================
+PROMPT Verifying User Creation
+PROMPT ============================================================
+
+SELECT 
+    USERNAME,
+    ACCOUNT_STATUS,
+    DEFAULT_TABLESPACE,
+    TEMPORARY_TABLESPACE,
+    CREATED,
+    PROFILE
+FROM DBA_USERS
+WHERE USERNAME = 'BENJAMIN_ADMIN';
+
+PROMPT
+PROMPT User Privileges:
+PROMPT
+
+SELECT 
+    GRANTEE,
+    PRIVILEGE,
+    ADMIN_OPTION
+FROM DBA_SYS_PRIVS
+WHERE GRANTEE = 'BENJAMIN_ADMIN'
+ORDER BY PRIVILEGE;
+
+PROMPT
+PROMPT User Roles:
+PROMPT
+
+SELECT 
+    GRANTEE,
+    GRANTED_ROLE,
+    ADMIN_OPTION
+FROM DBA_ROLE_PRIVS
+WHERE GRANTEE = 'BENJAMIN_ADMIN'
+ORDER BY GRANTED_ROLE;
+
+-- Test connection
+PROMPT
+PROMPT ============================================================
+PROMPT Testing Admin User Connection
+PROMPT ============================================================
+
+CONNECT BENJAMIN_ADMIN/Benjamin@localhost:1521/thur_26979_benjamin_blooddonation_db
+
+SELECT 
+    USER AS CONNECTED_USER,
+    SYS_CONTEXT('USERENV', 'CON_NAME') AS CONTAINER,
+    SYSDATE AS CONNECTION_TIME
+FROM DUAL;
+
+PROMPT ✓ Connection successful!
+
+-- Summary
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('╔════════════════════════════════════════════════════════╗');
+    DBMS_OUTPUT.PUT_LINE('║      USER CREATION COMPLETED SUCCESSFULLY!             ║');
+    DBMS_OUTPUT.PUT_LINE('╚════════════════════════════════════════════════════════╝');
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('✅ Username: BENJAMIN_ADMIN');
+    DBMS_OUTPUT.PUT_LINE('✅ Password: Benjamin');
+    DBMS_OUTPUT.PUT_LINE('✅ Privileges: SYSDBA, DBA, All System Privileges');
+    DBMS_OUTPUT.PUT_LINE('✅ Default Tablespace: BLOOD_BANK_DATA');
+    DBMS_OUTPUT.PUT_LINE('✅ Temporary Tablespace: BLOOD_BANK_TEMP');
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('Connection String:');
+    DBMS_OUTPUT.PUT_LINE('  sqlplus BENJAMIN_ADMIN/Benjamin@localhost:1521/thur_26979_benjamin_blooddonation_db');
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('Next Step: Proceed to create tables and objects');
+    DBMS_OUTPUT.PUT_LINE('');
+END;
+/
+
+SPOOL OFF;
+EXIT;
