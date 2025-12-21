@@ -81,3 +81,36 @@ EXCEPTION
         RETURN NULL;
 END;
 /
+CREATE OR REPLACE FUNCTION log_audit_event (
+    p_table_name    IN VARCHAR2,
+    p_operation     IN VARCHAR2,
+    p_record_id     IN VARCHAR2,
+    p_old_values    IN CLOB DEFAULT NULL,
+    p_new_values    IN CLOB DEFAULT NULL,
+    p_status        IN VARCHAR2,
+    p_reason        IN VARCHAR2 DEFAULT NULL
+) RETURN VARCHAR2 AS
+    PRAGMA AUTONOMOUS_TRANSACTION; -- Important for triggers
+    v_audit_id VARCHAR2(20);
+BEGIN
+    -- Generate audit ID
+    v_audit_id := 'AUD' || TO_CHAR(SYSDATE, 'YYMMDDHH24MISS') || DBMS_RANDOM.STRING('X', 4);
+    
+    INSERT INTO AUDIT_LOG (
+        audit_id, table_name, operation_type, record_id,
+        old_values, new_values, attempt_status, denial_reason,
+        user_name, ip_address, session_id
+    ) VALUES (
+        v_audit_id, p_table_name, p_operation, p_record_id,
+        p_old_values, p_new_values, p_status, p_reason,
+        USER, SYS_CONTEXT('USERENV', 'IP_ADDRESS'), SYS_CONTEXT('USERENV', 'SESSIONID')
+    );
+    
+    COMMIT;
+    RETURN v_audit_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RETURN NULL;
+END log_audit_event;
+/
