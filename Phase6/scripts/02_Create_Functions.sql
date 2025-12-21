@@ -114,3 +114,150 @@ EXCEPTION
         RETURN NULL;
 END log_audit_event;
 /
+-- ============================================================
+-- FUNCTION WITH EXCEPTION HANDLING AND VALIDATION
+-- ============================================================
+CREATE OR REPLACE FUNCTION calculate_donor_eligibility_score (
+    p_donor_id IN VARCHAR2
+) RETURN NUMBER AS
+    v_score NUMBER := 0;
+    v_age_months NUMBER;
+    v_last_donation DATE;
+    v_total_donations NUMBER;
+    v_health_checks_passed NUMBER := 0;
+    v_parameters VARCHAR2(500);
+    
+    -- Custom exceptions
+    invalid_donor_data EXCEPTION;
+    calculation_error EXCEPTION;
+    
+    PRAGMA EXCEPTION_INIT(invalid_donor_data, -20020);
+    PRAGMA EXCEPTION_INIT(calculation_error, -20021);
+BEGIN
+    v_parameters := 'donor_id=' || p_donor_id;
+    
+    -- Parameter validation
+    IF p_donor_id IS NULL OR LENGTH(TRIM(p_donor_id)) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20022, 'Donor ID cannot be null or empty');
+    END IF;
+    
+    -- Retrieve donor data with validation
+    BEGIN
+        SELECT 
+            MONTHS_BETWEEN(SYSDATE, date_of_birth),
+            last_donation_date,
+            total_donations
+        INTO 
+            v_age_months,
+            v_last_donation,
+            v_total_donations
+        FROM DONORS 
+        WHERE donor_id = p_donor_id;
+        
+        IF v_age_months IS NULL THEN
+            RAISE invalid_donor_data;
+        END IF;
+        
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE invalid_donor_data;
+    END;
+    
+    -- SCORE CALCULATION WITH VALIDATION
+    -- 1. Age score (18-60 = 30 points, outside = 0)
+    IF v_age_months/12 BETWEEN 18 AND 60 THEN
+        v_score := v_score + 30;
+    END IF;
+    
+    -- 2. Donation frequency score
+    IF v_last_donation IS NULL THEN
+        v_score := v_score + 20; -- First-time donor bonus
+    ELSIF SYSDATE - v_last_donation >= 56 THEN
+        v_score := v_score + 25; -- Eligible for donation
+    ELSIF SYSDATE - v_last_donation >= 30 THEN
+        v_score := v_score + 15; -- Recently donated
+    END IF;
+    
+    -- 3. Experience score
+    IF v_total_donations > 10 THEN
+        v_score := v_score + 30;
+    ELSIF v_total_donations > 5 THEN
+        v_score := v_score + 20;
+    ELSIF v_total_donations > 0 THEN
+        v_score := v_score + 10;
+    END IF;
+    
+    -- 4. Health check score (simulated)
+    DECLARE
+        v_health_score NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_health_checks_passed
+        FROM (
+            -- Simulated health checks
+            SELECT 1 FROM DUAL WHERE v_age_months/12 BETWEEN 18 AND 65
+            UNION ALL
+            SELECT 1 FROM DUAL WHERE v_total_donations < 50 -- Not excessive
+            UNION ALL
+            SELECT 1 FROM DUAL WHERE v_last_donation IS NULL 
+                OR SYSDATE - v_last_donation >= 56 -- Proper interval
+        );
+        
+        v_score := v_score + (v_health_checks_passed * 5);
+        
+        -- Validate score calculation
+        IF v_score < 0 OR v_score > 100 THEN
+            RAISE calculation_error;
+        END IF;
+        
+    EXCEPTION
+        WHEN OTHERS THEN
+            blood_bank_exceptions_pkg.log_error(
+                'calculate_donor_eligibility_score',
+                SQLCODE,
+                'Health check calculation failed: ' || SQLERRM,
+                v_parameters
+            );
+            v_score := 50; -- Default score on calculation error
+    END;
+    
+    RETURN LEAST(GREATEST(v_score, 0), 100); -- Ensure score 0-100
+    
+EXCEPTION
+    WHEN invalid_donor_data THEN
+        blood_bank_exceptions_pkg.log_error(
+            'calculate_donor_eligibility_score',
+            -20020,
+            'Invalid or missing donor data for ID: ' || p_donor_id,
+            v_parameters
+        );
+        RETURN 0; -- Recovery: return minimum score
+        
+    WHEN calculation_error THEN
+        blood_bank_exceptions_pkg.log_error(
+            'calculate_donor_eligibility_score',
+            -20021,
+            'Score calculation out of bounds: ' || v_score,
+            v_parameters
+        );
+        RETURN 50; -- Recovery: return median score
+        
+    WHEN VALUE_ERROR THEN
+        blood_bank_exceptions_pkg.log_error(
+            'calculate_donor_eligibility_score',
+            SQLCODE,
+            'Value error in parameters: ' || SQLERRM,
+            v_parameters
+        );
+        RETURN 0;
+        
+    WHEN OTHERS THEN
+        blood_bank_exceptions_pkg.log_error(
+            'calculate_donor_eligibility_score',
+            SQLCODE,
+            'Unexpected error: ' || SQLERRM || ' | Stack: ' || DBMS_UTILITY.FORMAT_ERROR_STACK,
+            v_parameters
+        );
+        RETURN 0; -- Recovery: safe default
+        
+END calculate_donor_eligibility_score;
+/
