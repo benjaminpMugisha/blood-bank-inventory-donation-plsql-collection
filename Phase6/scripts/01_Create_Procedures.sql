@@ -392,3 +392,129 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('Error processing request: ' || SQLERRM);
 END;
 /
+-- ============================================================
+-- TRANSACTION RECOVERY PROCEDURE
+-- ============================================================
+CREATE OR REPLACE PROCEDURE recover_failed_donation_transaction (
+    p_donation_id IN VARCHAR2,
+    p_recovery_type IN VARCHAR2 DEFAULT 'ROLLBACK'
+) AS
+    v_donation_status VARCHAR2(20);
+    v_unit_count NUMBER;
+    v_error_log_id VARCHAR2(20);
+    v_recovery_notes CLOB;
+    
+    -- Custom exceptions for recovery
+    recovery_failed EXCEPTION;
+    invalid_recovery_type EXCEPTION;
+    
+    PRAGMA EXCEPTION_INIT(recovery_failed, -20030);
+    PRAGMA EXCEPTION_INIT(invalid_recovery_type, -20031);
+BEGIN
+    -- Validate recovery type
+    IF p_recovery_type NOT IN ('ROLLBACK', 'COMPENSATE', 'RETRY', 'MANUAL') THEN
+        RAISE invalid_recovery_type;
+    END IF;
+    
+    -- Check donation status
+    BEGIN
+        SELECT status INTO v_donation_status
+        FROM DONATIONS 
+        WHERE donation_id = p_donation_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            v_donation_status := 'NOT_FOUND';
+    END;
+    
+    -- Check for orphaned blood units
+    SELECT COUNT(*) INTO v_unit_count
+    FROM BLOOD_UNITS 
+    WHERE donation_id = p_donation_id;
+    
+    v_recovery_notes := 'Recovery initiated for donation ' || p_donation_id || 
+                       '. Status: ' || v_donation_status || 
+                       ', Orphaned units: ' || v_unit_count || 
+                       ', Recovery type: ' || p_recovery_type;
+    
+    -- EXECUTE RECOVERY STRATEGY
+    CASE p_recovery_type
+        WHEN 'ROLLBACK' THEN
+            -- Clean up partial data
+            DELETE FROM BLOOD_UNITS WHERE donation_id = p_donation_id;
+            DELETE FROM DONATION_ADVERSE_EVENTS WHERE donation_id = p_donation_id;
+            UPDATE DONATIONS SET status = 'Cancelled' WHERE donation_id = p_donation_id;
+            v_recovery_notes := v_recovery_notes || '. Rollback completed.';
+            
+        WHEN 'COMPENSATE' THEN
+            -- Compensating transaction: mark units as discarded
+            UPDATE BLOOD_UNITS 
+            SET status = 'Discarded', 
+                notes = COALESCE(notes, '') || ' Discarded during recovery ' || SYSDATE
+            WHERE donation_id = p_donation_id;
+            
+            UPDATE DONATIONS 
+            SET status = 'Completed',
+                notes = COALESCE(notes, '') || ' Recovered via compensation ' || SYSDATE
+            WHERE donation_id = p_donation_id;
+            
+            v_recovery_notes := v_recovery_notes || '. Compensation completed.';
+            
+        WHEN 'RETRY' THEN
+            -- Log for manual retry
+            INSERT INTO ERROR_LOG (
+                error_id, procedure_name, error_message, parameters, notes
+            ) VALUES (
+                'REC' || TO_CHAR(SYSDATE, 'YYMMDDHH24MISS') || DBMS_RANDOM.STRING('X', 4),
+                'recover_failed_donation_transaction',
+                'Transaction requires manual retry: ' || p_donation_id,
+                'donation_id=' || p_donation_id,
+                v_recovery_notes
+            );
+            
+        WHEN 'MANUAL' THEN
+            -- Just log for manual intervention
+            v_recovery_notes := v_recovery_notes || '. Awaiting manual intervention.';
+    END CASE;
+    
+    -- Log the recovery attempt
+    blood_bank_exceptions_pkg.log_error(
+        'recover_failed_donation_transaction',
+        NULL,
+        v_recovery_notes,
+        'donation_id=' || p_donation_id || ',type=' || p_recovery_type
+    );
+    
+    COMMIT;
+    
+    DBMS_OUTPUT.PUT_LINE('Recovery completed: ' || v_recovery_notes);
+    
+EXCEPTION
+    WHEN invalid_recovery_type THEN
+        blood_bank_exceptions_pkg.log_error(
+            'recover_failed_donation_transaction',
+            -20031,
+            'Invalid recovery type: ' || p_recovery_type,
+            'donation_id=' || p_donation_id
+        );
+        RAISE;
+        
+    WHEN recovery_failed THEN
+        blood_bank_exceptions_pkg.log_error(
+            'recover_failed_donation_transaction',
+            -20030,
+            'Recovery failed for donation: ' || p_donation_id,
+            'donation_id=' || p_donation_id
+        );
+        RAISE;
+        
+    WHEN OTHERS THEN
+        blood_bank_exceptions_pkg.log_error(
+            'recover_failed_donation_transaction',
+            SQLCODE,
+            'Recovery error: ' || SQLERRM,
+            'donation_id=' || p_donation_id
+        );
+        RAISE;
+        
+END recover_failed_donation_transaction;
+/
